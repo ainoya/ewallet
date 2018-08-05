@@ -1,0 +1,44 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:9.6.9-alpine
+    restart: always
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    networks:
+      - internal
+    environment:
+      POSTGRESQL_PASSWORD: passw0rd
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      retries: 3
+  mailhog:
+    image: mailhog/mailhog:v1.0.0
+    restart: always
+    networks:
+      - internal
+  ewallet:
+    image: omisego/ewallet:watch-status
+    build: .
+    restart: always
+    networks:
+      - internal
+      - external
+    depends_on:
+      - postgres
+    env_file:
+       - mvp.env
+    environment:
+      DATABASE_URL: "postgresql://postgres:passw0rd@postgres:5432/ewallet"
+      LOCAL_LEDGER_DATABASE_URL: "postgresql://postgres:passw0rd@postgres:5432/local_ledger"
+      MIX_ENV: prod
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    ports:
+      - "4000:4000"
+networks:
+  external:
+  internal:
+volumes:
+  postgres-db:
